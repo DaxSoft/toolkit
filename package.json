@@ -1,6 +1,6 @@
 {
   "name": "@vorlefan/toolkit",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A general-purpose toolkit for Node.js applications.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
