@@ -6,13 +6,13 @@ import { FileInfo } from "../utils/scanFiles";
 export class InputTransformer {
   private openai: OpenAIApi;
   protected outputFilename: string = "input-forms.tsx";
-  protected model: string = "gpt-3.5-turbo";
+  protected model: string = "gpt-4o-mini";
   protected delayBetweenCalls: number = 1000; // default to 1 second
 
   constructor({
     apiKey,
     outputFilename,
-    model = "gpt-3.5-turbo",
+    model = "gpt-4o-mini",
     delayBetweenCalls = 1000, // delay in milliseconds
   }: {
     apiKey: string;
