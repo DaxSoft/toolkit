@@ -5,8 +5,12 @@ import { FileInfo } from "../utils/scanFiles";
 
 export class InputTransformer {
   private openai: OpenAIApi;
+  protected outputFilename: string = "input-forms.tsx";
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, outputFilename?: string) {
+    if (outputFilename) {
+      this.outputFilename = outputFilename;
+    }
     const configuration = new Configuration({ apiKey });
     this.openai = new OpenAIApi(configuration);
   }
