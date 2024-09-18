@@ -46,12 +46,14 @@ export class InputTransformer {
     }
 
     let combinedContent = "";
+    console.log("[InputTransformer]", "total to generate", inputs.size);
 
     for (const [filepath, fileInfo] of inputs) {
       const content = fs.readFileSync(filepath, "utf-8");
       const className = this.extractClassName(content);
 
       if (className) {
+        console.log("[InputTransformer]", filepath, className);
         const schema = await this.generateZodSchema(content, className);
         combinedContent += schema + "\n\n";
 
@@ -78,14 +80,14 @@ export class InputTransformer {
     retryCount = 0
   ): Promise<string> {
     const prompt = `
-Convert the following TypeScript InputType class into a Zod schema.
+Convert the following TypeScript InputType class into an equivalent Zod schema. Return only the TypeScript code for the schema without any explanations, comments, or markdown formatting.
 
 TypeScript Class:
 \`\`\`typescript
 ${content}
 \`\`\`
 
-Zod Schema should be in the format:
+Provide the Zod schema in the following format:
 
 export const ${className}Schema = z.object({ /* fields */ });
 export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
@@ -99,7 +101,18 @@ export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
       });
 
       const assistantMessage = response.data.choices[0].message?.content;
-      return assistantMessage || "";
+
+      // Extract code block from the assistant's message
+      const codeMatch = assistantMessage?.match(
+        /export\s+const\s+${className}Schema[\s\S]*?;\nexport\s+type\s+${className}SchemaContext[\s\S]*?;/
+      );
+
+      if (codeMatch && codeMatch[0]) {
+        return codeMatch[0].trim();
+      } else {
+        // If code block not found, return the assistant's message directly
+        return assistantMessage?.trim() || "";
+      }
     } catch (error: any) {
       const status = error.response?.status;
       const errorMessage =
