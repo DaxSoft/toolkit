@@ -43,6 +43,7 @@ export class InputTransformer {
     this.route.add("root", nestjsDir).skip([
       [nestjsDir, "node_modules"],
       [nestjsDir, ".git"],
+      [nestjsDir, "dist"],
     ]);
 
     const rootRoute = this.route.get("root");
@@ -51,11 +52,13 @@ export class InputTransformer {
     }
     const files = await this.route.allFilepaths(rootRoute.routePath);
 
+    console.log("[InputTransformer]", "files of the folder", files.length);
+
     const inputFiles = files.filter(
       (d) =>
         !d.includes("node_modules\\") &&
         !d.includes("dist\\") &&
-        d.includes(".git") &&
+        !d.includes(".git") &&
         d.includes(".ts")
     );
 
