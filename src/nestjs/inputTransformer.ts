@@ -48,10 +48,7 @@ export class InputTransformer {
     const files = await this.route.allFilepaths(rootRoute.routePath);
 
     const inputFiles = files.filter(
-      (d) =>
-        d.includes(".input") &&
-        !d.includes("node_modules\\") &&
-        !d.includes("dist\\")
+      (d) => !d.includes("node_modules\\") && !d.includes("dist\\")
     );
 
     if (inputFiles.length === 0) {
@@ -62,16 +59,31 @@ export class InputTransformer {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    let combinedContent = "";
+    let enumsContent: string = "";
+    let combinedContent = "import { z } from 'zod'";
+    combinedContent += "\n\n";
     console.log("[InputTransformer]", "total to generate", inputFiles);
 
     for (const filepath of inputFiles) {
-      const content = fs.readFileSync(filepath, "utf-8");
+      const content = await this.route.stream().read(filepath); // fs.readFileSync(filepath, "utf-8");
+      if (!content) {
+        continue;
+      }
+
+      const isInputType = content.includes("@InputType");
+      if (!isInputType) {
+        continue;
+      }
+
       const className = this.extractClassName(content);
 
       if (className) {
         console.log("[InputTransformer]", filepath, className);
-        const schema = await this.generateZodSchema(content, className);
+        const schema = await this.generateZodSchema(
+          content,
+          className,
+          enumsContent
+        );
         combinedContent += schema + "\n\n";
 
         // Wait between API calls to avoid rate limits
@@ -81,7 +93,11 @@ export class InputTransformer {
 
     await this.route
       .io()
-      .write(path.join(outputDir, this.outputFilename), combinedContent, true);
+      .write(
+        path.join(outputDir, this.outputFilename),
+        enumsContent + "\n" + combinedContent,
+        true
+      );
   }
 
   public async transformInputs(
@@ -92,6 +108,7 @@ export class InputTransformer {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
+    let enumsContent = "";
     let combinedContent = "";
     console.log("[InputTransformer]", "total to generate", inputs.size);
 
@@ -101,7 +118,11 @@ export class InputTransformer {
 
       if (className) {
         console.log("[InputTransformer]", filepath, className);
-        const schema = await this.generateZodSchema(content, className);
+        const schema = await this.generateZodSchema(
+          content,
+          className,
+          enumsContent
+        );
         combinedContent += schema + "\n\n";
 
         // Wait between API calls to avoid rate limits
@@ -111,7 +132,7 @@ export class InputTransformer {
 
     fs.writeFileSync(
       path.join(outputDir, this.outputFilename),
-      combinedContent,
+      enumsContent + "\n" + combinedContent,
       "utf-8"
     );
   }
@@ -124,15 +145,18 @@ export class InputTransformer {
   private async generateZodSchema(
     content: string,
     className: string,
+    enumsContent: string,
     retryCount = 0
   ): Promise<string> {
     const prompt = `
 Convert the following TypeScript InputType class into an equivalent Zod schema. Return only the TypeScript code for the schema without any explanations, comments, or markdown formatting.
 
+If the schema uses any enums, include them in an import statement at the beginning, importing from 'src/graphql/generated/graphql' as:
+
+import { Enum1, Enum2 } from 'src/graphql/generated/graphql';
+
 TypeScript Class:
-\`\`\`typescript
 ${content}
-\`\`\`
 
 Provide the Zod schema in the following format:
 
@@ -147,19 +171,33 @@ export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
         temperature: 0,
       });
 
-      const assistantMessage = response.data.choices[0].message?.content;
+      let assistantMessage = response.data.choices[0].message?.content;
 
-      // Extract code block from the assistant's message
-      const codeMatch = assistantMessage?.match(
-        /export\s+const\s+${className}Schema[\s\S]*?;\nexport\s+type\s+${className}SchemaContext[\s\S]*?;/
-      );
+      // Remove code fences if any
+      let code =
+        assistantMessage
+          ?.replace(/^```typescript\s*/, "")
+          .replace(/^```\s*/, "")
+          .replace(/```$/, "")
+          .trim() || "";
 
-      if (codeMatch && codeMatch[0]) {
-        return codeMatch[0].trim();
-      } else {
-        // If code block not found, return the assistant's message directly
-        return assistantMessage?.trim() || "";
+      // Extract enums used in the schema
+      const enumRegex = /z\.nativeEnum\((\w+)\)/g;
+      const enumsUsed = new Set<string>();
+      let match;
+      while ((match = enumRegex.exec(code)) !== null) {
+        enumsUsed.add(match[1]);
       }
+
+      if (enumsUsed.size > 0) {
+        const importStatement = `import { ${Array.from(enumsUsed).join(
+          ", "
+        )} } from 'src/graphql/generated/graphql';\n`;
+        enumsContent += importStatement;
+        // code = importStatement + code;
+      }
+
+      return code;
     } catch (error: any) {
       const status = error.response?.status;
       const errorMessage =
@@ -172,7 +210,12 @@ export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
           `Rate limit exceeded. Waiting ${delay}ms before retrying...`
         );
         await this.sleep(delay);
-        return this.generateZodSchema(content, className, retryCount + 1);
+        return this.generateZodSchema(
+          content,
+          className,
+          enumsContent,
+          retryCount + 1
+        );
       } else {
         console.error("OpenAI API error:", errorMessage);
         throw error;
