@@ -25,20 +25,11 @@ export function nestjsInputCommand() {
 
       console.log("Confirmed NestJS project. Scanning files...");
 
-      const filesMap = scanFiles(project);
-      console.log(`Found ${filesMap.size} relevant files.`);
-
-      const inputFiles = new Map(
-        Array.from(filesMap).filter(([, info]) => info.type === "input")
-      );
-
-      console.log(`Found ${inputFiles.size} input files.`);
-
       console.log("Initializing InputTransformer...");
       const transformer = new InputTransformer(apikey);
 
       console.log("Transforming input files...");
-      await transformer.transformInputs(inputFiles, output);
+      await transformer.generate(project, output);
 
       console.log("Transformation complete.");
     });
