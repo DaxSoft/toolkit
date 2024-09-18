@@ -2,12 +2,14 @@ import * as fs from "fs";
 import { Configuration, OpenAIApi } from "openai";
 import * as path from "path";
 import { FileInfo } from "../utils/scanFiles";
+import { PathRoute } from "@vorlefan/path";
 
 export class InputTransformer {
   private openai: OpenAIApi;
   protected outputFilename: string = "input-forms.tsx";
   protected model: string = "gpt-4o-mini";
   protected delayBetweenCalls: number = 1000; // default to 1 second
+  protected route: PathRoute = new PathRoute();
 
   constructor({
     apiKey,
@@ -35,6 +37,46 @@ export class InputTransformer {
 
     const configuration = new Configuration({ apiKey });
     this.openai = new OpenAIApi(configuration);
+  }
+
+  public async generate(nestjsDir: string, outputDir: string) {
+    this.route.add("root", nestjsDir);
+    const rootRoute = this.route.get("root");
+    if (!rootRoute?.routePath) {
+      throw new Error("Error in finding the nestjs dir");
+    }
+    const files = await this.route.allFilepaths(rootRoute.routePath);
+
+    const inputFiles = files.filter((d) => d.includes(".input"));
+
+    if (inputFiles.length === 0) {
+      throw new Error("No input files found");
+    }
+
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    let combinedContent = "";
+    console.log("[InputTransformer]", "total to generate", inputFiles);
+
+    for (const filepath of inputFiles) {
+      const content = fs.readFileSync(filepath, "utf-8");
+      const className = this.extractClassName(content);
+
+      if (className) {
+        console.log("[InputTransformer]", filepath, className);
+        const schema = await this.generateZodSchema(content, className);
+        combinedContent += schema + "\n\n";
+
+        // Wait between API calls to avoid rate limits
+        await this.sleep(this.delayBetweenCalls);
+      }
+    }
+
+    await this.route
+      .io()
+      .write(path.join(outputDir, this.outputFilename), combinedContent, true);
   }
 
   public async transformInputs(
