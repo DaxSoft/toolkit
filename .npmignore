@@ -1,0 +1,7 @@
+# Exclude source files and other unnecessary files
+src/
+test/
+node_modules/
+tsconfig.json
+tsconfig.build.json
+.gitignore

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "test": "jest",
     "prepublishOnly": "yarn build"
   },
   "keywords": [
@@ -23,14 +24,16 @@
     "access": "public"
   },
   "dependencies": {
-    "zod": "^3.0.0",
+    "commander": "^8.0.0",
     "openai": "^3.0.0",
-    "commander": "^8.0.0"
+    "zod": "^3.0.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.13",
     "@types/node": "^16.0.0",
-    "typescript": "^4.0.0",
+    "dotenv": "^16.4.5",
     "jest": "^27.0.0",
-    "@types/jest": "^27.0.0"
+    "ts-jest": "^29.2.5",
+    "typescript": "^4.0.0"
   }
 }

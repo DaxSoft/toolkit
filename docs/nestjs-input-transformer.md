@@ -77,7 +77,7 @@ To use the OpenAI integration, you need an API key. You can obtain one by signin
 Transform `InputType` classes into Zod schemas:
 
 ```bash
-vorlefan-toolkit transform \
+vorlefan-toolkit nestjsInputCommand \
   --project /path/to/nestjs/project \
   --output /desired/output/directory \
   --apikey your_openai_api_key
