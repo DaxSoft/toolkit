@@ -6,10 +6,22 @@ import { FileInfo } from "../utils/scanFiles";
 export class InputTransformer {
   private openai: OpenAIApi;
   protected outputFilename: string = "input-forms.tsx";
+  protected model: string = "gpt-4o";
 
-  constructor(apiKey: string, outputFilename?: string) {
+  constructor({
+    apiKey,
+    outputFilename,
+    model = "gpt-4o",
+  }: {
+    apiKey: string;
+    outputFilename?: string;
+    model?: string;
+  }) {
     if (outputFilename) {
       this.outputFilename = outputFilename;
+    }
+    if (model) {
+      this.model = model;
     }
     const configuration = new Configuration({ apiKey });
     this.openai = new OpenAIApi(configuration);
@@ -65,12 +77,18 @@ export const ${className}Schema = z.object({ /* fields */ });
 export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
 `;
 
-    const response = await this.openai.createCompletion({
-      model: "text-davinci-003",
-      prompt,
-      max_tokens: 150,
-    });
+    try {
+      const response = await this.openai.createChatCompletion({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      });
 
-    return response.data.choices[0].text || "";
+      const assistantMessage = response.data.choices[0].message?.content;
+      return assistantMessage || "";
+    } catch (error: any) {
+      console.error("OpenAI API error:", error.response?.data || error.message);
+      throw error;
+    }
   }
 }

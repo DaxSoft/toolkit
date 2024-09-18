@@ -16,7 +16,7 @@ describe("InputTransformer", () => {
   beforeAll(() => {
     // Create mock input files
     const inputContent = `
-      import { InputType, Field } from '@nestjs/graphql';
+      import { InputType, Field, Int } from '@nestjs/graphql';
 
       @InputType()
       export class CreateUserInput {
@@ -47,13 +47,14 @@ describe("InputTransformer", () => {
     fs.rmSync(path.join(__dirname, "CreateUserInput.input.ts"));
   });
 
-  test("should transform input files into Zod schemas", async () => {
+  test("should transform input files into Zod schemas using createChatCompletion", async () => {
     // Mock the OpenAI API response
     const mockOpenAIResponse = {
       data: {
         choices: [
           {
-            text: `
+            message: {
+              content: `
 export const CreateUserInputSchema = z.object({
   name: z.string(),
   email: z.string().email().optional(),
@@ -61,17 +62,18 @@ export const CreateUserInputSchema = z.object({
 });
 
 export type CreateUserInputSchemaContext = z.infer<typeof CreateUserInputSchema>;
-            `,
+              `,
+            },
           },
         ],
       },
     };
 
-    (OpenAIApi.prototype.createCompletion as jest.Mock).mockResolvedValue(
+    (OpenAIApi.prototype.createChatCompletion as jest.Mock).mockResolvedValue(
       mockOpenAIResponse
     );
 
-    const transformer = new InputTransformer(mockApiKey);
+    const transformer = new InputTransformer({ apiKey: mockApiKey });
 
     await transformer.transformInputs(mockInputFiles, outputDir);
 
