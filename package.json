@@ -1,0 +1,34 @@
+{
+  "name": "@vorlefan/toolkit",
+  "version": "0.0.1",
+  "description": "A general-purpose toolkit for Node.js applications.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "vorlefan-toolkit": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "toolkit",
+    "nestjs",
+    "typescript",
+    "cli"
+  ],
+  "author": "Michael Willian Santos",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "openai": "^3.0.0",
+    "commander": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.0.0",
+    "typescript": "^4.0.0",
+    "jest": "^27.0.0",
+    "@types/jest": "^27.0.0"
+  }
+}
