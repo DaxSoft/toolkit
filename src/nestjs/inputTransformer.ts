@@ -7,22 +7,32 @@ export class InputTransformer {
   private openai: OpenAIApi;
   protected outputFilename: string = "input-forms.tsx";
   protected model: string = "gpt-3.5-turbo";
+  protected delayBetweenCalls: number = 1000; // default to 1 second
 
   constructor({
     apiKey,
     outputFilename,
     model = "gpt-3.5-turbo",
+    delayBetweenCalls = 1000, // delay in milliseconds
   }: {
     apiKey: string;
     outputFilename?: string;
     model?: string;
+    delayBetweenCalls?: number;
   }) {
+    if (!apiKey) {
+      throw new Error("OpenAI API key is required.");
+    }
     if (outputFilename) {
       this.outputFilename = outputFilename;
     }
     if (model) {
       this.model = model;
     }
+    if (delayBetweenCalls !== undefined) {
+      this.delayBetweenCalls = delayBetweenCalls;
+    }
+
     const configuration = new Configuration({ apiKey });
     this.openai = new OpenAIApi(configuration);
   }
@@ -44,11 +54,14 @@ export class InputTransformer {
       if (className) {
         const schema = await this.generateZodSchema(content, className);
         combinedContent += schema + "\n\n";
+
+        // Wait between API calls to avoid rate limits
+        await this.sleep(this.delayBetweenCalls);
       }
     }
 
     fs.writeFileSync(
-      path.join(outputDir, "input-forms.tsx"),
+      path.join(outputDir, this.outputFilename),
       combinedContent,
       "utf-8"
     );
@@ -61,7 +74,8 @@ export class InputTransformer {
 
   private async generateZodSchema(
     content: string,
-    className: string
+    className: string,
+    retryCount = 0
   ): Promise<string> {
     const prompt = `
 Convert the following TypeScript InputType class into a Zod schema.
@@ -87,8 +101,26 @@ export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
       const assistantMessage = response.data.choices[0].message?.content;
       return assistantMessage || "";
     } catch (error: any) {
-      console.error("OpenAI API error:", error.response?.data || error.message);
-      throw error;
+      const status = error.response?.status;
+      const errorMessage =
+        error.response?.data?.error?.message || error.message;
+
+      if (status === 429 && retryCount < 5) {
+        // Rate limit exceeded, wait and retry
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+        console.warn(
+          `Rate limit exceeded. Waiting ${delay}ms before retrying...`
+        );
+        await this.sleep(delay);
+        return this.generateZodSchema(content, className, retryCount + 1);
+      } else {
+        console.error("OpenAI API error:", errorMessage);
+        throw error;
+      }
     }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
