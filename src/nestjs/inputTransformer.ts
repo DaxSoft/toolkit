@@ -6,12 +6,12 @@ import { FileInfo } from "../utils/scanFiles";
 export class InputTransformer {
   private openai: OpenAIApi;
   protected outputFilename: string = "input-forms.tsx";
-  protected model: string = "gpt-4o";
+  protected model: string = "gpt-3.5-turbo";
 
   constructor({
     apiKey,
     outputFilename,
-    model = "gpt-4o",
+    model = "gpt-3.5-turbo",
   }: {
     apiKey: string;
     outputFilename?: string;
@@ -79,7 +79,7 @@ export type ${className}SchemaContext = z.infer<typeof ${className}Schema>;
 
     try {
       const response = await this.openai.createChatCompletion({
-        model: "gpt-4o-mini",
+        model: this.model,
         messages: [{ role: "user", content: prompt }],
         temperature: 0,
       });
