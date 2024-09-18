@@ -73,7 +73,7 @@ export class InputTransformer {
     let enumsContent: string = "";
     let combinedContent = "import { z } from 'zod'";
     combinedContent += "\n\n";
-    console.log("[InputTransformer]", "total to generate", inputFiles);
+    console.log("[InputTransformer]", "total to analise", inputFiles.length);
 
     for (const filepath of inputFiles) {
       const content = await this.route.stream().read(filepath); // fs.readFileSync(filepath, "utf-8");
