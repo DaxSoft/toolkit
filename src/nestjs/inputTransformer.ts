@@ -40,7 +40,11 @@ export class InputTransformer {
   }
 
   public async generate(nestjsDir: string, outputDir: string) {
-    this.route.add("root", nestjsDir);
+    this.route.add("root", nestjsDir).skip([
+      [nestjsDir, "node_modules"],
+      [nestjsDir, ".git"],
+    ]);
+
     const rootRoute = this.route.get("root");
     if (!rootRoute?.routePath) {
       throw new Error("Error in finding the nestjs dir");
@@ -48,7 +52,11 @@ export class InputTransformer {
     const files = await this.route.allFilepaths(rootRoute.routePath);
 
     const inputFiles = files.filter(
-      (d) => !d.includes("node_modules\\") && !d.includes("dist\\")
+      (d) =>
+        !d.includes("node_modules\\") &&
+        !d.includes("dist\\") &&
+        d.includes(".git") &&
+        d.includes(".ts")
     );
 
     if (inputFiles.length === 0) {
