@@ -47,7 +47,9 @@ export class InputTransformer {
     }
     const files = await this.route.allFilepaths(rootRoute.routePath);
 
-    const inputFiles = files.filter((d) => d.includes(".input"));
+    const inputFiles = files.filter(
+      (d) => d.includes(".input") && !d.includes("node_modules/")
+    );
 
     if (inputFiles.length === 0) {
       throw new Error("No input files found");
